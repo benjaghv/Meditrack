@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
 import { DiagnosisResponse } from '@/types';
 
 export interface GroqResponse {
@@ -13,10 +12,8 @@ export interface GroqResponse {
 export async function POST(request: Request) {
   try {
     const { symptoms } = await request.json();
-    
-    // Ejemplo de síntomas para depuración
     const debugSymptoms = symptoms.length === 0 ? ['dolor de cabeza', 'fiebre'] : symptoms;
-    
+
     const prompt = `Eres un asistente médico experto. Analiza los siguientes síntomas y proporciona un diagnóstico, tratamiento recomendado y si es seguro automedicarse.
 
 Síntomas: ${debugSymptoms.join(', ')}
@@ -35,56 +32,78 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido:
     }
   }
 }
-
 No incluyas ningún texto adicional fuera del JSON. Responde solo con el JSON válido.`;
 
-    const groqResponse = await axios.post<GroqResponse>('https://api.groq.com/openai/v1/chat/completions', {
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      messages: [{
-        role: "user",
-        content: prompt
-      }],
-      temperature: 0.7
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-      }
-    });
+    const apiKey = process.env.GROQ_API_KEY;
 
-    const content = groqResponse.data.choices[0].message.content;
-    console.log('Respuesta de Groq:', content);
-
-    // Intentar extraer el JSON de la respuesta
-    try {
-      // Buscar el primer y último corchete
-      const start = content.indexOf('{');
-      const end = content.lastIndexOf('}') + 1;
-      
-      if (start !== -1 && end !== -1) {
-        // Extraer el JSON del contenido
-        const jsonContent = content.substring(start, end);
-        console.log('JSON extraído:', jsonContent);
-        
-        // Intentar parsear el JSON
-        const parsedResponse = JSON.parse(jsonContent) as DiagnosisResponse;
-        
-        if (!parsedResponse.diagnosis || !parsedResponse.diagnosis.treatment) {
-          throw new Error('Respuesta inválida de la API');
-        }
-        
-        return NextResponse.json(parsedResponse);
-      } else {
-        throw new Error('No se pudo encontrar un JSON válido en la respuesta');
-      }
-    } catch (error) {
-      console.error('Error al procesar la respuesta:', error);
-      throw new Error('Error al procesar la respuesta de la API');
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Falta GROQ_API_KEY' }, { status: 500 });
     }
-  } catch (error) {
-    console.error('Error:', error);
+
+    const models = [
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'llama3-70b-8192',
+      'mixtral-8x7b-32768'
+    ];
+
+    for (const model of models) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1500
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(`⚠️ Modelo ${model} falló con status ${response.status}:`, errorText);
+          continue; // Intenta el siguiente modelo
+        }
+
+        const data: GroqResponse = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+          console.warn(`⚠️ Modelo ${model} no devolvió contenido`);
+          continue;
+        }
+
+        const start = content.indexOf('{');
+        const end = content.lastIndexOf('}') + 1;
+
+        if (start === -1 || end === -1) throw new Error('No se pudo encontrar un JSON válido');
+
+        const jsonContent = content.substring(start, end);
+        const parsedResponse = JSON.parse(jsonContent) as DiagnosisResponse;
+
+        if (!parsedResponse?.diagnosis?.treatment) {
+          throw new Error('Respuesta de modelo inválida');
+        }
+
+        return NextResponse.json(parsedResponse);
+
+      } catch (modelError) {
+        console.error(`⚠️ Error al intentar modelo ${model}:`, modelError);
+        continue;
+      }
+    }
+
     return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Error al procesar el diagnóstico'
+      error: 'Todos los modelos fallaron. Intenta nuevamente más tarde.'
+    }, { status: 503 });
+
+  } catch (error) {
+    console.error('💥 Error general del servidor:', error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Error desconocido'
     }, { status: 500 });
   }
 }
