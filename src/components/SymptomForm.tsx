@@ -8,7 +8,7 @@ interface SymptomFormProps {
 
 export function SymptomForm({ onSubmit }: SymptomFormProps) {
   const [symptoms, setSymptoms] = useState<string>('');
-  const [previousTreatments, setPreviousTreatments] = useState<string>('');
+  const [previousTreatments] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

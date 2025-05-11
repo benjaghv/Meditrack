@@ -25,7 +25,7 @@ export interface Followup {
 }
 
 // Simulación de base de datos
-let followups: Followup[] = [];
+const followups: Followup[] = [];
 
 export async function GET() {
   return NextResponse.json(followups);

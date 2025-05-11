@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import RecommendedMedications from './RecommendedMedications';
@@ -9,33 +9,46 @@ interface MedicationsModalProps {
   treatment: string;
 }
 
+interface Medicamento {
+  nombre: string;
+  dosis: string;
+  frecuencia: number;
+  duracion: number;
+  descripcion: string;
+}
+
+interface MedicationsResponse {
+  medicamentos: Medicamento[];
+}
+
 export default function MedicationsModal({ treatment }: MedicationsModalProps) {
-  const [medications, setMedications] = useState<any>(null);
+  const [medications, setMedications] = useState<MedicationsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isRecommendedModalOpen, setIsRecommendedModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchMedications();
+    }
+  }, [isModalOpen]);
 
   const fetchMedications = async () => {
     setIsLoading(true);
     setError('');
+    setMedications(null);
 
     try {
       const response = await fetch('/api/medications', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ treatment }),
       });
 
-      if (!response.ok) {
-        throw new Error('Error al obtener los medicamentos');
-      }
+      if (!response.ok) throw new Error('Error al obtener los medicamentos');
 
       const data = await response.json();
-      
-      // Verificar que la estructura del JSON es correcta
+
       if (!data?.medicamentos || !Array.isArray(data.medicamentos)) {
         throw new Error('Formato de respuesta incorrecto');
       }
@@ -63,75 +76,48 @@ export default function MedicationsModal({ treatment }: MedicationsModalProps) {
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <h4 className="font-medium leading-none">Tratamiento</h4>
-            <p className="text-sm text-muted-foreground">
-              {treatment}
-            </p>
+            <p className="text-sm text-muted-foreground">{treatment}</p>
           </div>
-          <Button
-            onClick={() => {
-              fetchMedications();
-              setIsRecommendedModalOpen(true);
-            }}
-            disabled={isLoading}
-            className="w-full bg-[#dc2626] text-white hover:bg-[#f87171] transition"
-          >
-            {isLoading ? 'Cargando...' : 'Ver medicamentos recomendados'}
-          </Button>
-          <RecommendedMedications
-            medications={medications}
-            isOpen={isRecommendedModalOpen}
-            onClose={() => setIsRecommendedModalOpen(false)}
-          />
-          {error && (
-            <p className="text-red-500 text-sm">{error}</p>
-          )}
-          {medications?.medicamentos?.length > 0 ? (
-            <div className="space-y-4">
-              <div className="h-[300px] overflow-y-auto">
-              {medications.medicamentos.map((med: any, index: number) => (
-                  <div key={index} className="p-4 border rounded-lg mb-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Medicamento {index + 1}</h4>
-                      <div className="space-y-1">
-                        <div className="flex items-center">
-                          <span className="font-medium w-24">Nombre:</span>
-                          <span className="ml-2">{med.nombre}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="font-medium w-24">Dosis:</span>
-                          <span className="ml-2">{med.dosis}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="font-medium w-24">Frecuencia:</span>
-                          <span className="ml-2">{med.frecuencia} veces al día</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="font-medium w-24">Duración:</span>
-                          <span className="ml-2">{med.duracion} días</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="font-medium w-24">Descripción:</span>
-                          <span className="ml-2">{med.descripcion}</span>
-                        </div>
-                      </div>
-                    </div>
+
+          {isLoading ? (
+            <p className="text-center text-gray-500">Cargando medicamentos...</p>
+          ) : error ? (
+            <p className="text-center text-red-500">{error}</p>
+          ) : medications?.medicamentos?.length ? (
+            <div className="space-y-4 h-[300px] overflow-y-auto">
+              {medications.medicamentos.map((med, index) => (
+                <div key={index} className="p-4 border rounded-lg mb-4">
+                  <h4 className="font-medium mb-2">Medicamento {index + 1}</h4>
+                  <div className="space-y-1">
+                    <Detail label="Nombre" value={med.nombre} />
+                    <Detail label="Dosis" value={med.dosis} />
+                    <Detail label="Frecuencia" value={`${med.frecuencia} veces al día`} />
+                    <Detail label="Duración" value={`${med.duracion} días`} />
+                    <Detail label="Descripción" value={med.descripcion} />
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              {isLoading ? (
-                <p className="text-gray-500">Cargando medicamentos...</p>
-              ) : error ? (
-                <p className="text-red-500">{error}</p>
-              ) : (
-                <p className="text-gray-500">No se encontraron medicamentos recomendados.</p>
-              )}
-            </div>
+            <p className="text-center text-gray-500">No se encontraron medicamentos recomendados.</p>
           )}
+
+          <RecommendedMedications
+            medications={medications}
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+          />
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center">
+      <span className="font-medium w-24">{label}:</span>
+      <span className="ml-2">{value}</span>
+    </div>
   );
 }

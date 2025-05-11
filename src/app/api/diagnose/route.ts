@@ -12,7 +12,7 @@ export interface GroqResponse {
 
 export async function POST(request: Request) {
   try {
-    const { symptoms, previousTreatments } = await request.json();
+    const { symptoms } = await request.json();
     
     // Ejemplo de síntomas para depuración
     const debugSymptoms = symptoms.length === 0 ? ['dolor de cabeza', 'fiebre'] : symptoms;

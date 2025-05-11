@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 
+interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     console.log('📥 Recibiendo solicitud POST');
-    const { messages } = await request.json();
+    const { messages }: { messages: Message[] } = await request.json();
     console.log('📝 Mensajes recibidos:', messages);
 
     
-    const systemPrompt = {
+    const systemPrompt: Message = {
       role: 'system',
       content: `
         Eres un asistente médico virtual cuyo propósito principal es ayudar a evaluar los síntomas de los pacientes y ofrecer recomendaciones claras.
@@ -19,12 +24,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       `,
     };
   
-
-
-if (!messages.some((msg: any) => msg.role === 'system')) {
-  messages.unshift(systemPrompt);
-}
-
+    if (!messages.some(msg => msg.role === 'system')) {
+      messages.unshift(systemPrompt);
+    }
 
     const apiKey = process.env.GROQ_API_KEY;
 

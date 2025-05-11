@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import MedicationsModal from './MedicationsModal';
+
+type Medication = {
+  name: string;
+  description?: string;
+};
 
 export default function TreatmentForm() {
   const [treatment, setTreatment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [medications, setMedications] = useState<any>(null);
+  const [medications, setMedications] = useState<Medication[] | null>(null);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -33,10 +36,10 @@ export default function TreatmentForm() {
         throw new Error('Error al obtener los medicamentos');
       }
 
-      const data = await response.json();
+      const data: Medication[] = await response.json();
       setMedications(data);
       setIsModalOpen(true);
-    } catch (err) {
+    } catch {
       setError('Error al obtener los medicamentos. Por favor, inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
@@ -70,6 +73,19 @@ export default function TreatmentForm() {
             Ver medicamentos recomendados
           </Button>
         </form>
+
+        {error && <div className="text-red-500 mt-2">{error}</div>}
+
+        {isModalOpen && medications && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold">Medicamentos recomendados:</h3>
+            <ul className="list-disc list-inside mt-2">
+              {medications.map((med, index) => (
+                <li key={index}>{med.name}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

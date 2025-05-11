@@ -1,14 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
 
 interface RecommendedMedicationsProps {
-  medications: any;
+  medications: MedicationsResponse | null;
   isOpen: boolean;
   onClose: () => void;
 }
+
+interface Medicamento {
+  nombre: string;
+  tipo?: string;
+  dosis: string;
+  frecuencia: number;
+  duracion: number;
+  descripcion: string;
+}
+
+interface MedicationsResponse {
+  medicamentos: Medicamento[];
+}
+
 
 export default function RecommendedMedications({ medications, isOpen, onClose }: RecommendedMedicationsProps) {
   return (
@@ -18,7 +30,7 @@ export default function RecommendedMedications({ medications, isOpen, onClose }:
           <DialogTitle>Medicamentos Recomendados</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {medications?.medicamentos?.slice(0, 5).map((med: any, index: number) => (
+          {medications?.medicamentos?.slice(0, 5).map((med: Medicamento, index: number) => (
             <div key={index} className="p-4 border rounded-lg mb-4">
               <div className="space-y-2">
                 <h4 className="font-medium">Medicamento {index + 1}</h4>

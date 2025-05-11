@@ -6,29 +6,9 @@ import Header from '@/components/Header';
 import DiagnosisForm from '@/components/DiagnosisForm';
 
 export default function Home() {
-  const [diagnosis, setDiagnosis] = React.useState<any>(null);
+  
 
-  const handleSubmit = async (data: { symptoms: string[]; previousTreatments: string[] }) => {
-    try {
-      const response = await fetch('/api/diagnose', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      if (result.error) {
-        console.error('Error:', result.error);
-        return;
-      }
-
-      setDiagnosis(result.diagnoses);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

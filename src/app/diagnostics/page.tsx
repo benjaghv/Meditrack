@@ -6,7 +6,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import MedicationsModal from "@/components/MedicationsModal";
 import { Trash2 } from 'lucide-react';
 
-function DiagnosisModalView({ diagnosis }: { diagnosis: any }) {
+interface Treatment {
+  name: string;
+  type: string;
+  description: string;
+  self_medication: string;
+  reason: string;
+}
+
+interface Diagnosis {
+  condition: string;
+  probability: number;
+  treatment: Treatment;
+}
+
+interface SavedDiagnosis {
+  diagnosis: Diagnosis;
+  savedAt: string;
+}
+
+
+function DiagnosisModalView({ diagnosis }: { diagnosis: SavedDiagnosis }) {
   return (
     <div className="grid gap-4 py-4">
       <div className="space-y-2">
@@ -52,7 +72,7 @@ function DiagnosisModalView({ diagnosis }: { diagnosis: any }) {
 }
 
 export default function DiagnosticsPage() {
-  const [diagnostics, setDiagnostics] = useState<any[]>([]);
+  const [diagnostics, setDiagnostics] = useState<SavedDiagnosis[]>([]);
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [deleteIdx, setDeleteIdx] = useState<number | null>(null);
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -106,14 +126,12 @@ export default function DiagnosticsPage() {
 
                 {/* Dialogo de diagnóstico */}
                 <Dialog open={openIdx === idx} onOpenChange={open => setOpenIdx(open ? idx : null)}>
-                <div className="border rounded-lg p-4 bg-gray-50 flex-1 flex items-center justify-between mx-2 sm:mx-0">
+                <div className="border rounded-lg p-4 pb-5 bg-gray-50 flex-1 flex items-center justify-between mx-2 sm:mx-0">
 
                     <div>
                       <div className="font-semibold">{diag.diagnosis?.condition || "Sin título"}</div>
                       <div className="text-sm text-gray-600">{diag.diagnosis?.treatment?.description}</div>
-                      <div className="text-xs text-gray-400 mt-2">
-                        Guardado el: {diag.savedAt ? new Date(diag.savedAt).toLocaleString() : ""}
-                      </div>
+                      
                     </div>
                     <DialogTrigger asChild>
                       <button className="ml-4 px-4 py-2 rounded bg-[#dc2626] text-white hover:bg-[#f87171] transition cursor-pointer">

@@ -18,10 +18,10 @@ interface DiagnosisResultsProps {
 }
 
 export default function DiagnosisResults({ diagnosis }: DiagnosisResultsProps) {
-  if (!diagnosis) return null;
 
   const [saved, setSaved] = React.useState(false);
 
+  if (!diagnosis) return null;
   const handleSave = () => {
     const stored = localStorage.getItem("diagnostics");
     const arr = stored ? JSON.parse(stored) : [];

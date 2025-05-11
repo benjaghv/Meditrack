@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,23 +6,38 @@ import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import MedicationsModal from './MedicationsModal';
 
+interface Diagnosis {
+  diagnosis: {
+    condition: string;
+    probability?: number;
+    treatment?: {
+      name?: string;
+      type?: string;
+      description?: string;
+      self_medication?: string;
+      reason?: string;
+    };
+  };
+}
 
-
-function DiagnosisModalContent({ diagnosis }: { diagnosis: any }) {
+function DiagnosisModalContent({ diagnosis }: { diagnosis: Diagnosis }) {
   const [saved, setSaved] = useState(false);
-const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
-const handleSave = () => {
-  try {
-    const existing = JSON.parse(localStorage.getItem("diagnostics") || "[]");
-    const updated = [...existing, diagnosis];
-    localStorage.setItem("diagnostics", JSON.stringify(updated));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  } catch (e) {
-    setError("Error al guardar el diagnóstico localmente.");
-  }
-}; return (
+
+  const handleSave = () => {
+    try {
+      const existing = JSON.parse(localStorage.getItem("diagnostics") || "[]");
+      const updated = [...existing, diagnosis];
+      localStorage.setItem("diagnostics", JSON.stringify(updated));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setError("Error al guardar el diagnóstico localmente.");
+    }
+  };
+
+  return (
     <div className="grid gap-4 py-4">
       <div className="space-y-2">
         <h4 className="font-medium leading-none">Diagnóstico</h4>
@@ -35,10 +48,9 @@ const handleSave = () => {
       <div className="space-y-2">
         <h4 className="font-medium leading-none">Probabilidad</h4>
         <p className="text-sm text-muted-foreground">
-        {diagnosis?.diagnosis?.probability
-    ? `${Number(diagnosis.diagnosis.probability).toFixed(0)}%`
-    : 'N/A'}
-
+          {diagnosis?.diagnosis?.probability
+            ? `${Number(diagnosis.diagnosis.probability).toFixed(0)}%`
+            : 'N/A'}
         </p>
       </div>
       <div className="space-y-2">
@@ -90,7 +102,7 @@ const handleSave = () => {
 export default function DiagnosisForm() {
   const [symptoms, setSymptoms] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [diagnosis, setDiagnosis] = useState<any>(null);
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -115,7 +127,7 @@ export default function DiagnosisForm() {
       const data = await response.json();
       setDiagnosis(data);
       setIsModalOpen(true);
-    } catch (err) {
+    } catch {
       setError('Error al obtener el diagnóstico. Por favor, inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
@@ -158,9 +170,6 @@ export default function DiagnosisForm() {
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[95vw] md:w-[90vw] lg:w-[80vw] max-w-[1000px] sm:rounded-lg p-4 max-h-[90vh] overflow-y-auto">
-
-
-
               <DialogHeader>
                 <DialogTitle>Diagnóstico y Recomendaciones</DialogTitle>
               </DialogHeader>

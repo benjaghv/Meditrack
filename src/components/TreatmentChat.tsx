@@ -6,15 +6,32 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import MedicationsModal from './MedicationsModal';
+
+interface Treatment {
+  name?: string;
+  type?: string;
+  description?: string;
+  self_medication?: boolean;
+  reason?: string;
+  dose?: string;
+  frequency?: string;
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-function DiagnosisSelector({ onSelect }: { onSelect: (diag: any) => void }) {
-  const [diagnostics, setDiagnostics] = useState<any[]>([]);
+interface Diagnosis {
+  diagnosis?: {
+    condition?: string;
+    treatment?: Treatment;
+    savedAt?: string;
+  };
+}
+
+function DiagnosisSelector({ onSelect }: { onSelect: (diag: Diagnosis) => void }) {
+  const [diagnostics, setDiagnostics] = useState<Diagnosis[]>([]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -35,14 +52,16 @@ function DiagnosisSelector({ onSelect }: { onSelect: (diag: any) => void }) {
           {diagnostics.length === 0 ? (
             <div className="text-gray-500 text-sm">No hay diagnósticos guardados.</div>
           ) : (
-            diagnostics.map((diag: any, idx: number) => (
+            diagnostics.map((diag: Diagnosis, idx: number) => (
               <button
                 key={idx}
                 className="block w-full text-left px-2 py-1 hover:bg-[#f87171] hover:text-white rounded cursor-pointer"
                 onClick={() => { onSelect(diag); setOpen(false); }}
               >
                 {diag.diagnosis?.condition || 'Sin título'}
-                <span className="block text-xs text-gray-400">{diag.savedAt ? new Date(diag.savedAt).toLocaleString() : ''}</span>
+                <span className="block text-xs text-gray-400">
+                  {diag.diagnosis?.savedAt ? new Date(diag.diagnosis.savedAt).toLocaleString() : ''}
+                </span>
               </button>
             ))
           )}
@@ -61,30 +80,24 @@ export default function TreatmentChat() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTreatment, setSelectedTreatment] = useState<any>(null);
+  const [selectedTreatment, setSelectedTreatment] = useState<Treatment | null>(null);
   const [isMedicationsModalOpen, setIsMedicationsModalOpen] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-useEffect(() => {
-  if (isFirstLoad) {
-    setIsFirstLoad(false); // la próxima vez ya no es primera carga
-    return; // no hace scroll al cargar
-  }
-
-  if (messagesEndRef.current) {
-    messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-  }
-}, [messages]);
-
+  useEffect(() => {
+    if (!isFirstLoad && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setIsFirstLoad(false);
+    }
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const newMessage = { role: 'user', content: input };
+    const newMessage: ChatMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, newMessage]);
     setInput('');
     setIsLoading(true);
@@ -96,33 +109,31 @@ useEffect(() => {
         body: JSON.stringify({ messages: [...messages, newMessage] }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || 'Error al comunicarse con el asistente');
-      }
+      if (!response.ok) throw new Error('Error al comunicarse con el asistente');
 
       const data = await response.json();
       if (data.success && data.content) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       setMessages(prev => [
         ...prev,
-        {
-          role: 'assistant',
-          content: 'Lo siento, no pude conectarme con el asistente. Por favor, intenta nuevamente.'
-        }
+        { role: 'assistant', content: 'Lo siento, no pude conectarme con el asistente. Intenta nuevamente.' }
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSelectDiagnosis = async (diag: any) => {
-    const diagText = `Contexto de diagnóstico guardado:\nDiagnóstico: ${diag.diagnosis?.condition}\nTratamiento recomendado: ${diag.diagnosis?.treatment?.name}\nTipo: ${diag.diagnosis?.treatment?.type}\nDescripción: ${diag.diagnosis?.treatment?.description || ''}\nPuede automedicarse: ${diag.diagnosis?.treatment?.self_medication || ''}\nRazón: ${diag.diagnosis?.treatment?.reason || ''}`;
+  const handleSelectDiagnosis = async (diag: Diagnosis) => {
+    const { diagnosis } = diag;
+    const treatment = diagnosis?.treatment;
+    setSelectedTreatment(treatment || null);
+    setIsMedicationsModalOpen(true);
 
-    const newMessage = { role: 'user', content: diagText };
+    const diagText = `Contexto de diagnóstico guardado:\nDiagnóstico: ${diagnosis?.condition}\nTratamiento: ${treatment?.name}\nTipo: ${treatment?.type}\nDescripción: ${treatment?.description}\nAutomedicación: ${treatment?.self_medication ? 'Sí' : 'No'}\nRazón: ${treatment?.reason}`;
+
+    const newMessage: ChatMessage = { role: 'user', content: diagText };
     setMessages(prev => [...prev, newMessage]);
     setIsLoading(true);
 
@@ -133,23 +144,16 @@ useEffect(() => {
         body: JSON.stringify({ messages: [...messages, newMessage] }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error || 'Error al comunicarse con el asistente');
-      }
+      if (!response.ok) throw new Error('Error al comunicarse con el asistente');
 
       const data = await response.json();
       if (data.success && data.content) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
       setMessages(prev => [
         ...prev,
-        {
-          role: 'assistant',
-          content: 'Lo siento, no pude conectarme con el asistente. Por favor, intenta nuevamente.'
-        }
+        { role: 'assistant', content: 'Lo siento, no pude conectarme con el asistente. Intenta nuevamente.' }
       ]);
     } finally {
       setIsLoading(false);
@@ -158,7 +162,6 @@ useEffect(() => {
 
   return (
     <Card className="w-full max-w-4xl mx-auto my-0 pt-4 pb-1 mt-1 sm:mt-7">
-
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
           <img src="https://static.vecteezy.com/system/resources/previews/041/922/879/non_2x/assistant-virtual-assistance-icon-illustration-vector.jpg"
@@ -171,8 +174,7 @@ useEffect(() => {
         </div>
       </CardHeader>
       <CardContent className="space-y-2 p-2">
-      <div className="space-y-2 h-[50vh] sm:h-[300px] xl:h-[380px] overflow-y-auto p-1 border rounded-lg">
-
+        <div className="space-y-2 h-[50vh] sm:h-[300px] xl:h-[380px] overflow-y-auto p-1 border rounded-lg">
           {messages.map((message, index) => (
             <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
               <div className={`rounded-lg p-3 max-w-[70%] ${message.role === 'user' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -223,14 +225,14 @@ useEffect(() => {
             <DialogTitle>Medicamento Recomendado</DialogTitle>
           </DialogHeader>
           {selectedTreatment && (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <div className="flex items-center"><span className="font-medium w-24">Nombre:</span><span className="ml-2">{selectedTreatment.name}</span></div>
-                <div className="flex items-center"><span className="font-medium w-24">Dosis:</span><span className="ml-2">{selectedTreatment.dose}</span></div>
-                <div className="flex items-center"><span className="font-medium w-24">Frecuencia:</span><span className="ml-2">{selectedTreatment.frequency}</span></div>
-                <div className="flex items-center"><span className="font-medium w-24">Duración:</span><span className="ml-2">{selectedTreatment.duration}</span></div>
-                <div className="flex items-center"><span className="font-medium w-24">Descripción:</span><span className="ml-2">{selectedTreatment.description}</span></div>
-              </div>
+            <div className="space-y-2 text-sm">
+              <p><strong>Nombre:</strong> {selectedTreatment.name || 'N/A'}</p>
+              <p><strong>Tipo:</strong> {selectedTreatment.type || 'N/A'}</p>
+              <p><strong>Descripción:</strong> {selectedTreatment.description || 'N/A'}</p>
+              <p><strong>Automedicación:</strong> {selectedTreatment.self_medication ? 'Sí' : 'No'}</p>
+              <p><strong>Razón:</strong> {selectedTreatment.reason || 'N/A'}</p>
+              <p><strong>Dosis:</strong> {selectedTreatment.dose || 'N/A'}</p>
+              <p><strong>Frecuencia:</strong> {selectedTreatment.frequency || 'N/A'}</p>
             </div>
           )}
         </DialogContent>
