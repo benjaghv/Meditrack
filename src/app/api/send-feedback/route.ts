@@ -23,8 +23,14 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data });
-  } catch (error) {
-    console.error("Error al enviar correo:", error);
-    return NextResponse.json({ success: false, error: error.message });
+  } catch (error: unknown) {
+    // Verificar si el error es una instancia de Error
+    if (error instanceof Error) {
+      console.error("Error al enviar correo:", error);
+      return NextResponse.json({ success: false, error: error.message });
+    } else {
+      console.error("Error desconocido:", error);
+      return NextResponse.json({ success: false, error: 'Error desconocido' });
+    }
   }
 }
